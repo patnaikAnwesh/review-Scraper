@@ -1,0 +1,17 @@
+{
+  "searchUrlTemplate": "https://www.g2.com/search?query={company}",
+  "productLink": "a[href*='/products/']",
+  "ensureReviewsPath": "/reviews",
+  "reviewBlock": "div.paper-review, div.review, li.review-item, article, div[data-testid*='review']",
+  "title": "h3, .review__title, .headline",
+  "body": "div.review__body, .review-body, p, .description",
+  "date": "time, .review-date, .date, .posted-on, .meta, span",
+  "dateAttrPrefer": "datetime",
+  "rating": ".rating, [data-rating], .stars, [class*='star']",
+  "ratingAttrPrefer": "aria-label",
+  "reviewer": ".consumer-name, .reviewer, .author, .user",
+  "pagination": {
+    "type": "query",
+    "pageParam": "page"
+  }
+}

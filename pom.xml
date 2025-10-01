@@ -17,12 +17,20 @@
   </properties>
 
   <dependencies>
-    <!-- Selenium + WebDriverManager -->
-    <dependency>
-      <groupId>org.seleniumhq.selenium</groupId>
-      <artifactId>selenium-java</artifactId>
-      <version>4.12.0</version>
-    </dependency>
+	  
+	  <!-- Selenium Java -->
+  <dependency>
+    <groupId>org.seleniumhq.selenium</groupId>
+    <artifactId>selenium-java</artifactId>
+    <version>4.35.0</version>
+  </dependency>
+
+  <!-- CDP DevTools artifact that exists for that Selenium release -->
+  <dependency>
+    <groupId>org.seleniumhq.selenium</groupId>
+    <artifactId>selenium-devtools-v137</artifactId>
+    <version>4.35.0</version>
+  </dependency>
 
     <dependency>
       <groupId>io.github.bonigarcia</groupId>

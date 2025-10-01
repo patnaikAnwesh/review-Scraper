@@ -1,4 +1,5 @@
 com\example\reviewscraper\util\DateUtils.class
+com\example\reviewscraper\util\HumanBehavior.class
 com\example\reviewscraper\cli\App.class
 com\example\reviewscraper\browser\DriverManager.class
 com\example\reviewscraper\ReviewScraper$Review.class

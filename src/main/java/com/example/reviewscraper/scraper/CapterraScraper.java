@@ -10,10 +10,6 @@ import org.openqa.selenium.WebElement;
 import java.time.LocalDate;
 import java.util.*;
 
-/**
- * Capterra scraper that reads CSS selectors from resources/config/capterra_selectors.json
- * Uses BaseScraper helper methods (safeFindElements / safeFindElement).
- */
 public class CapterraScraper extends BaseScraper {
 
     private final SelectorConfig cfg;
@@ -24,131 +20,125 @@ public class CapterraScraper extends BaseScraper {
     }
 
     @Override
-    public List<Review> scrape(String company, LocalDate start, LocalDate end) throws Exception {
+    public List<Review> scrape(String companyOrUrl, LocalDate start, LocalDate end) throws Exception {
         List<Review> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
-        String searchTemplate = Optional.ofNullable(cfg.getString("searchUrlTemplate"))
-                .orElse("https://www.capterra.in/search?search={company}");
+        String productUrl;
+        
+        // Check if input is already a Capterra URL
+        if (companyOrUrl.startsWith("http://") || companyOrUrl.startsWith("https://")) {
+            System.out.println("DEBUG: Direct URL provided: " + companyOrUrl);
+            productUrl = companyOrUrl;
+            
+            // Navigate directly to the URL
+            driver.get(productUrl);
+            Thread.sleep(1000);
+            System.out.println("DEBUG: Loaded URL, current page: " + driver.getCurrentUrl());
+        } else {
+            // Original search flow
+            String searchTemplate = Optional.ofNullable(cfg.getString("searchUrlTemplate"))
+                    .orElse("https://www.capterra.in/search?search={company}");
 
-        String searchUrl = searchTemplate.replace("{company}",
-                java.net.URLEncoder.encode(company, java.nio.charset.StandardCharsets.UTF_8));
+            String searchUrl = searchTemplate.replace("{company}",
+                    java.net.URLEncoder.encode(companyOrUrl, java.nio.charset.StandardCharsets.UTF_8));
 
-        // open search page
-        driver.get(searchUrl);
-        System.out.println("DEBUG: opened searchUrl=" + searchUrl + " current=" + driver.getCurrentUrl() + " title=" + driver.getTitle());
+            driver.get(searchUrl);
+            System.out.println("DEBUG: opened searchUrl=" + searchUrl + " current=" + driver.getCurrentUrl() + " title=" + driver.getTitle());
 
-        // find product link using configured selector (support /software/ etc.)
-        String productLinkSel = Optional.ofNullable(cfg.getString("productLink"))
-                .orElse("a[href*='/reviews/'], a[href*='/software/'], a[href*='/p/'], a[href*='/products/']");
-        List<WebElement> links = safeFindElements(By.cssSelector(productLinkSel), 10);
-        System.out.println("DEBUG: productLinkSel = " + productLinkSel + " -> found links = " + links.size());
-        for (int i = 0; i < Math.min(6, links.size()); i++) {
-            try {
-                System.out.println("DEBUG: href[" + i + "] = " + links.get(i).getAttribute("href") + " | text=" + links.get(i).getText());
-            } catch (Exception ignored) {}
-        }
-        if (links.isEmpty()) {
-            // If search page redirected directly to a product page, try current URL
-            String current = driver.getCurrentUrl();
-            if (current != null && (current.contains("/reviews/") || current.contains("/software/"))) {
-                System.out.println("DEBUG: search redirected to product page: " + current);
-                links = new ArrayList<>();
-                // create a fake element list by navigating later directly
+            String productLinkSel = Optional.ofNullable(cfg.getString("productLink"))
+                    .orElse("a[href*='/reviews/'], a[href*='/software/'], a[href*='/p/'], a[href*='/products/']");
+            List<WebElement> links = safeFindElements(By.cssSelector(productLinkSel), 10);
+            System.out.println("DEBUG: productLinkSel = " + productLinkSel + " -> found links = " + links.size());
+            
+            if (links.isEmpty()) {
+                String current = driver.getCurrentUrl();
+                if (current != null && (current.contains("/reviews/") || current.contains("/software/"))) {
+                    System.out.println("DEBUG: search redirected to product page: " + current);
+                    productUrl = current;
+                } else {
+                    System.out.println("Capterra: no product links found for: " + companyOrUrl);
+                    return out;
+                }
             } else {
-                System.out.println("Capterra: no product links found for: " + company + " using selector: " + productLinkSel);
+                productUrl = links.get(0).getAttribute("href");
+            }
+
+            if (productUrl == null || productUrl.isBlank()) {
+                System.out.println("Capterra: product link had no href");
                 return out;
             }
         }
 
-        // choose productUrl (either from first link or currentUrl if redirected)
-        String productUrl;
-        if (!links.isEmpty()) {
-            productUrl = links.get(0).getAttribute("href");
-        } else {
-            productUrl = driver.getCurrentUrl();
-        }
-
-        if (productUrl == null || productUrl.isBlank()) {
-            System.out.println("Capterra: product link had no href");
-            return out;
-        }
-
-        // Normalize to a reviews page where possible:
-        // - if already /reviews -> use it
-        // - if /software -> prefer product page (as reviews usually embedded), but prepare altReviewsUrl
-        // - otherwise append /reviews
+        // Normalize to reviews URL
         String reviewsUrl = productUrl;
         String altReviewsUrl = null;
+        
         if (!productUrl.contains("/reviews")) {
             if (productUrl.contains("/software/")) {
-                reviewsUrl = productUrl; // often reviews are on same /software/ page
+                reviewsUrl = productUrl;
                 altReviewsUrl = productUrl.replaceFirst("/software/", "/reviews/");
-                System.out.println("DEBUG: productUrl looks like /software/; productUrl=" + productUrl + " altReviewsUrl=" + altReviewsUrl);
+                System.out.println("DEBUG: productUrl is /software/; reviewsUrl=" + reviewsUrl + " altReviewsUrl=" + altReviewsUrl);
             } else {
                 reviewsUrl = productUrl.endsWith("/") ? productUrl + "reviews" : productUrl + "/reviews";
             }
         }
-        System.out.println("DEBUG: chosen productUrl=" + productUrl + " -> using reviewsUrl=" + reviewsUrl);
+        System.out.println("DEBUG: Final reviewsUrl=" + reviewsUrl);
 
-        // load selectors from config (with safe defaults)
+        // Load selectors from config
         String reviewBlockSel = Optional.ofNullable(cfg.getString("reviewBlock")).orElse("#reviews > div");
         String titleSel = Optional.ofNullable(cfg.getString("title")).orElse("h3");
         String bodySel = Optional.ofNullable(cfg.getString("body")).orElse("p");
         String dateSel = Optional.ofNullable(cfg.getString("date")).orElse("time, .date");
-        String dateAttrPrefer = cfg.getString("dateAttrPrefer"); // e.g., "datetime"
+        String dateAttrPrefer = cfg.getString("dateAttrPrefer");
         String ratingSel = Optional.ofNullable(cfg.getString("rating")).orElse("[data-rating], .rating, [class*='star']");
-        String ratingAttrPrefer = cfg.getString("ratingAttrPrefer"); // e.g., "aria-label"
+        String ratingAttrPrefer = cfg.getString("ratingAttrPrefer");
         String reviewerSel = Optional.ofNullable(cfg.getString("reviewer")).orElse(".reviewer, .user, .author");
 
-        // pagination loop
+        // Pagination loop
         for (int page = 1; page <= this.maxPages; page++) {
             String pageUrl = reviewsUrl + (page > 1 ? "?page=" + page : "");
             driver.get(pageUrl);
+            System.out.println("DEBUG: Loading page " + page + ": " + pageUrl);
 
-            // polite delay and allow JS to render
             try { Thread.sleep(this.pageDelayMs); } catch (InterruptedException ignored) {}
 
-            // scroll to bottom to help lazy-loading
+            // Scroll to help with lazy loading
             try {
                 ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight);");
                 Thread.sleep(Math.min(1200, this.pageDelayMs));
             } catch (Exception ignored) {}
 
-            // attempt to find review blocks (longer wait)
             List<WebElement> blocks = safeFindElements(By.cssSelector(reviewBlockSel), 15);
             if (blocks.isEmpty()) {
                 System.out.println("Capterra: no review blocks found at " + pageUrl + " with selector " + reviewBlockSel);
-                // try altReviewsUrl if provided and we haven't tried it yet
+                
                 if (altReviewsUrl != null && !altReviewsUrl.equals(reviewsUrl)) {
                     System.out.println("DEBUG: trying altReviewsUrl=" + altReviewsUrl);
                     reviewsUrl = altReviewsUrl;
-                    altReviewsUrl = null; // only try once
-                    page = 0; // will increment to 1 at loop bottom
+                    altReviewsUrl = null;
+                    page = 0;
                     continue;
                 }
                 break;
             }
 
-            System.out.println("DEBUG: pageUrl -> blocks found = " + blocks.size());
+            System.out.println("DEBUG: Found " + blocks.size() + " review blocks on page " + page);
 
             for (WebElement block : blocks) {
                 try {
                     Review r = new Review();
 
-                    // title
                     safeFindElement(block, By.cssSelector(titleSel)).ifPresent(e -> {
                         String t = e.getText();
                         if (t != null) r.setTitle(t.trim());
                     });
 
-                    // body / review text
                     safeFindElement(block, By.cssSelector(bodySel)).ifPresent(e -> {
                         String txt = e.getText();
                         if (txt != null) r.setReview(txt.trim());
                     });
 
-                    // date: prefer attribute if specified, otherwise text
                     Optional<WebElement> dateEl = safeFindElement(block, By.cssSelector(dateSel));
                     String rawDate = null;
                     if (dateEl.isPresent()) {
@@ -165,19 +155,16 @@ public class CapterraScraper extends BaseScraper {
 
                     LocalDate parsed = DateUtils.parse(rawDate);
                     if (parsed != null && !dateInRange(parsed, start, end)) {
-                        // skip if outside range
                         continue;
                     }
                     r.setDate(parsed != null ? parsed.toString() : rawDate);
                     r.getExtra().put("rawDate", rawDate);
 
-                    // reviewer
                     safeFindElement(block, By.cssSelector(reviewerSel)).ifPresent(e -> {
                         String rv = e.getText();
                         if (rv != null) r.setReviewer(rv.trim());
                     });
 
-                    // rating: prefer configured attribute (e.g., aria-label), then data-rating, then text
                     safeFindElement(block, By.cssSelector(ratingSel)).ifPresent(e -> {
                         String txt = null;
                         if (ratingAttrPrefer != null && !ratingAttrPrefer.isBlank()) {
@@ -194,7 +181,6 @@ public class CapterraScraper extends BaseScraper {
                         }
                     });
 
-                    // dedupe and add
                     String key = dedupeKey(parsed, r.getReview(), r.getTitle(), r.getReviewer());
                     if (seen.add(key)) {
                         r.getExtra().put("productPage", productUrl);
@@ -204,19 +190,16 @@ public class CapterraScraper extends BaseScraper {
                     }
 
                 } catch (Exception ex) {
-                    // log and continue
                     System.err.println("Capterra: error parsing block: " + ex.getMessage());
                 }
             }
 
-            // sleep before next page
             try { Thread.sleep(this.pageDelayMs); } catch (InterruptedException ignored) {}
         }
 
         return out;
     }
 
-    // overload dedupeKey to include title/reviewer (helper)
     private String dedupeKey(LocalDate parsed, String reviewText, String title, String reviewer) {
         StringBuilder sb = new StringBuilder();
         if (parsed != null) sb.append(parsed.toString());
