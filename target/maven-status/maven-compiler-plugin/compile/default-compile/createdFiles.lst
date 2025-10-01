@@ -1,0 +1,15 @@
+com\example\reviewscraper\util\DateUtils.class
+com\example\reviewscraper\cli\App.class
+com\example\reviewscraper\browser\DriverManager.class
+com\example\reviewscraper\ReviewScraper$Review.class
+com\example\reviewscraper\model\Review.class
+com\example\reviewscraper\ReviewScraper$DriverManager.class
+com\example\reviewscraper\scraper\CapterraScraper.class
+com\example\reviewscraper\scraper\G2Scraper.class
+com\example\reviewscraper\scraper\TrustRadiusScraper.class
+com\example\reviewscraper\util\SelectorConfig.class
+com\example\reviewscraper\ReviewScraper.class
+com\example\reviewscraper\scraper\BaseScraper.class
+com\example\reviewscraper\package-info.class
+com\example\reviewscraper\io\JsonWriter.class
+com\example\reviewscraper\scraper\Scraper.class

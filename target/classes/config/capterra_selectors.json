@@ -1,0 +1,19 @@
+{
+  "searchUrlTemplate": "https://www.capterra.in/search?search={company}",
+  "productLink": "a[href*='/reviews/'], a[href*='/software/'], a[href*='/p/'], a[href*='/products/']",
+  "ensureReviewsPath": "/reviews",
+  "reviewBlock": "#reviews > div",
+  "title": "h3, .review-title, .card-title",
+  "body": ".mb-4.mb-lg-0.position-relative, .review-body, .review-text, .comment, p",
+  "date": ".fs-5.text-neutral-90, .text-neutral-70.fs-5, time[datetime], time, .review-date, .date",
+  "dateAttrPrefer": "datetime",
+  "rating": "[aria-label*='star'], [data-rating], .rating, [class*='stars'], .stars",
+  "ratingAttrPrefer": "aria-label",
+  "reviewer": ".text-neutral-90.fs-5, .consumer-name, .reviewer, .user, .author",
+  "pagination": {
+    "type": "query",
+    "pageParam": "page",
+    "nextLinkSelector": "a[rel='next'], a.next",
+    "loadMoreSelector": "button.load-more"
+  }
+}
