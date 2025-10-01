@@ -1,0 +1,56 @@
+Review-Scraper
+
+A Java + Selenium tool to scrape user reviews from platforms like G2 and Capterra (with optional third-source integration).
+It lets you collect reviews for a product within a date range and outputs them in JSON format for easy analysis.
+
+ Features
+
+Scrape reviews from G2 and Capterra
+Filter reviews by date range
+Support for headless and non-headless modes
+Output saved as structured JSON files
+Extensible: easily integrate additional review sources
+
+Setup & Installation
+Requirements
+Java 17+ (tested on JDK 23)
+Maven 3.8+
+Chrome/Chromium browser installed
+Matching ChromeDriver (handled automatically if WebDriverManager is used)
+
+Clone the repository
+git clone https://github.com/patnaikAnwesh/review-Scraper.git
+cd review-Scraper
+
+Build the JAR
+mvn clean package
+
+
+This generates the runnable JAR inside target/, e.g.:
+
+target/review12-0.0.1-SNAPSHOT.jar
+
+
+(If you’ve configured the Shade plugin, you may see *-jar-with-dependencies.jar.)
+
+ Usage
+
+General command format:
+java -jar target/review12-0.0.1-SNAPSHOT.jar "<ProductName>" <StartDate> <EndDate> <Source> [options]
+
+Example 1 – Scrape HubSpot reviews from Capterra
+java -jar target/review12-0.0.1-SNAPSHOT.jar "HubSpot" 2024-01-01 2024-12-31 capterra headless=false
+
+Example 2 – Scrape Salesforce reviews from G2
+java -jar target/review12-0.0.1-SNAPSHOT.jar "Salesforce" 2024-01-01 2024-12-31 g2
+
+Example 3 – Scrape from multiple sources
+java -jar target/review12-0.0.1-SNAPSHOT.jar "HubSpot" 2024-01-01 2024-12-31 g2,capterra headless=true
+
+Arguments
+Argument	Description
+ProductName	Name of the product (e.g., "HubSpot")
+StartDate	Start of the review range (yyyy-MM-dd)
+EndDate	End of the review range (yyyy-MM-dd)
+Source	Review source: g2, capterra, (or both as comma-separated)
+headless	(Optional) true / false – run browser in headless mode
